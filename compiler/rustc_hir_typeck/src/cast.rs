@@ -401,7 +401,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             )
                             .is_ok()
                     {
-                        sugg = Some((format!("&{}*", mutbl.prefix_str()), cast_ty == expr_ty));
+                        sugg = Some((format!("unsafe {{ &{}*", mutbl.prefix_str()), cast_ty == expr_ty));
                     } else if let ty::Ref(expr_reg, expr_ty, expr_mutbl) = *self.expr_ty.kind()
                         && expr_mutbl == Mutability::Not
                         && mutbl == Mutability::Mut
@@ -433,7 +433,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             )
                             .is_ok()
                     {
-                        sugg = Some((format!("&{}", mutbl.prefix_str()), false));
+                        sugg = Some((format!("unsafe {{ &{}", mutbl.prefix_str()), false));
                     }
                 } else if let ty::RawPtr(TypeAndMut { mutbl, .. }) = *self.cast_ty.kind()
                     && fcx
@@ -449,7 +449,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         )
                         .is_ok()
                 {
-                    sugg = Some((format!("&{}", mutbl.prefix_str()), false));
+                    sugg = Some((format!("unsafe {{ &{}", mutbl.prefix_str()), false));
                 }
                 if sugg_mutref {
                     err.span_label(self.span, "invalid cast");
@@ -474,8 +474,15 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     let mut suggestion = vec![(self.expr_span.shrink_to_lo(), sugg)];
                     if needs_parens {
                         suggestion[0].1 += "(";
-                        suggestion.push((self.expr_span.shrink_to_hi(), ")".to_string()));
                     }
+                    suggestion.push((
+                        self.expr_span.shrink_to_hi(),
+                        match needs_parens {
+                            true => ") }".to_string(),
+                            false => " }".to_string(),
+                        },
+                    ));
+
                     if remove_cast {
                         suggestion.push((
                             self.expr_span.shrink_to_hi().to(self.cast_span),
