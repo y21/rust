@@ -110,6 +110,7 @@ use multiple_supertrait_upcastable::*;
 use non_ascii_idents::*;
 use non_fmt_panic::NonPanicFmt;
 use nonstandard_style::*;
+pub use nonstandard_style::{to_camel_case, to_snake_case};
 use noop_method_call::*;
 use opaque_hidden_inferred_bound::*;
 use pass_by_value::*;

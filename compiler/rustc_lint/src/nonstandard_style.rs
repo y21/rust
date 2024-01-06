@@ -95,7 +95,57 @@ fn is_camel_case(name: &str) -> bool {
         })
 }
 
-fn to_camel_case(s: &str) -> String {
+/// Returns a `snake_case` version of the input.
+///
+/// This is publicly re-exported because it's also used by clippy.
+/// ```
+/// use rustc_lint::to_snake_case;
+/// assert_eq!(to_snake_case("AbcDef"), "abc_def");
+/// assert_eq!(to_snake_case("ABCD"), "abcd");
+/// assert_eq!(to_snake_case("AbcDD"), "abc_dd");
+/// assert_eq!(to_snake_case("Abc1DD"), "abc1_dd");
+/// ```
+pub fn to_snake_case(mut str: &str) -> String {
+    let mut words = vec![];
+    // Preserve leading underscores
+    str = str.trim_start_matches(|c: char| {
+        if c == '_' {
+            words.push(String::new());
+            true
+        } else {
+            false
+        }
+    });
+    for s in str.split('_') {
+        let mut last_upper = false;
+        let mut buf = String::new();
+        if s.is_empty() {
+            continue;
+        }
+        for ch in s.chars() {
+            if !buf.is_empty() && buf != "'" && ch.is_uppercase() && !last_upper {
+                words.push(buf);
+                buf = String::new();
+            }
+            last_upper = ch.is_uppercase();
+            buf.extend(ch.to_lowercase());
+        }
+        words.push(buf);
+    }
+    words.join("_")
+}
+
+/// Returns a `CamelCase` version of the input.
+///
+/// This is publicly re-exported because it's also used by clippy.
+/// ```
+/// use rustc_lint::to_camel_case;
+/// assert_eq!(to_camel_case("abc_def"), "AbcDef");
+/// assert_eq!(to_camel_case("a_b_c_d"), "ABCD");
+/// assert_eq!(to_camel_case("abc_d_d"), "AbcDD");
+/// assert_eq!(to_camel_case("abc1_d_d"), "Abc1DD");
+/// ```
+pub fn to_camel_case(s: &str) -> String {
     s.trim_matches('_')
         .split('_')
         .filter(|component| !component.is_empty())
@@ -234,36 +284,6 @@ declare_lint! {
 declare_lint_pass!(NonSnakeCase => [NON_SNAKE_CASE]);
 
 impl NonSnakeCase {
-    fn to_snake_case(mut str: &str) -> String {
-        let mut words = vec![];
-        // Preserve leading underscores
-        str = str.trim_start_matches(|c: char| {
-            if c == '_' {
-                words.push(String::new());
-                true
-            } else {
-                false
-            }
-        });
-        for s in str.split('_') {
-            let mut last_upper = false;
-            let mut buf = String::new();
-            if s.is_empty() {
-                continue;
-            }
-            for ch in s.chars() {
-                if !buf.is_empty() && buf != "'" && ch.is_uppercase() && !last_upper {
-                    words.push(buf);
-                    buf = String::new();
-                }
-                last_upper = ch.is_uppercase();
-                buf.extend(ch.to_lowercase());
-            }
-            words.push(buf);
-        }
-        words.join("_")
-    }
-
     /// Checks if a given identifier is snake case, and reports a diagnostic if not.
     fn check_snake_case(&self, cx: &LateContext<'_>, sort: &str, ident: &Ident) {
         fn is_snake_case(ident: &str) -> bool {
@@ -291,7 +311,7 @@ impl NonSnakeCase {
 
         if !is_snake_case(name) {
             let span = ident.span;
-            let sc = NonSnakeCase::to_snake_case(name);
+            let sc = to_snake_case(name);
             // We cannot provide meaningful suggestions
             // if the characters are in the category of "Uppercase Letter".
             let sub = if name != sc {
@@ -473,7 +493,7 @@ impl NonUpperCaseGlobals {
     fn check_upper_case(cx: &LateContext<'_>, sort: &str, ident: &Ident) {
         let name = ident.name.as_str();
         if name.chars().any(|c| c.is_lowercase()) {
-            let uc = NonSnakeCase::to_snake_case(name).to_uppercase();
+            let uc = to_snake_case(name).to_uppercase();
             // We cannot provide meaningful suggestions
             // if the characters are in the category of "Lowercase Letter".
             let sub = if *name != uc {
