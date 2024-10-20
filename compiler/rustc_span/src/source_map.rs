@@ -1052,9 +1052,6 @@ impl SourceMap {
     /// span in the context of the block span is found. The trailing semicolon is included
     /// on a best-effort basis.
     pub fn stmt_span(&self, stmt_span: Span, block_span: Span) -> Span {
-        if !stmt_span.from_expansion() {
-            return stmt_span;
-        }
         let mac_call = original_sp(stmt_span, block_span);
         self.mac_call_stmt_semi_span(mac_call).map_or(mac_call, |s| mac_call.with_hi(s.hi()))
     }
